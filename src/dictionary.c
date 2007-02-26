@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include "support.h"
 #include "dictionary.h"
@@ -44,14 +45,15 @@ treeview_fill (GtkWidget *view, ydpdict_t *dict)
 	GtkTreeIter iter;
 	GtkCellRenderer *renderer;
 	int i;
+	struct timeval tv1, tv2;
 
-	store = gtk_list_store_new(1, G_TYPE_STRING);
+	store = gtk_list_store_new (1, G_TYPE_STRING);
 
 	for (i = 0; i < dict->word_count; i++) {
-		gtk_list_store_append(store, &iter);
-		gtk_list_store_set(store, &iter, 0, dict->words[i], -1);
+		gtk_list_store_append (store, &iter);
+		gtk_list_store_set (store, &iter, 0, dict->words[i], -1);
 	}
-	
+
 	gtk_tree_view_set_model(GTK_TREE_VIEW(view), GTK_TREE_MODEL(store));
 
 	g_object_unref(store);
@@ -64,6 +66,8 @@ load_dictionary (gpointer data)
 	GtkWidget *window1, *window2 = data, *treeview1;
 	gchar *dat, *idx;
 	gint num;
+	struct timeval tv1, tv2;
+	gint td;
 
 	G_LOCK (dict);
 
@@ -99,7 +103,7 @@ load_dictionary (gpointer data)
 		gdk_threads_leave ();
 		g_print ("filled\n");
 	} else {
-		fprintf (stderr, _("Unable to open dictionary."));
+		fprintf (stderr, _("Unable to open dictionary.\n"));
 	}
 
 	g_free (dat);
