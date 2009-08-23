@@ -18,7 +18,8 @@ int
 main (int argc, char *argv[])
 {
   GtkWidget *window1;
-  ydpdict_t dict;
+  ydpdict_t *dict;
+  gboolean debug = FALSE;
 
 #ifdef ENABLE_NLS
   bindtextdomain (GETTEXT_PACKAGE, PACKAGE_LOCALE_DIR);
@@ -34,6 +35,12 @@ main (int argc, char *argv[])
 
   gtk_init (&argc, &argv);
 
+  { int i; printf("argc=%d", argc); for (i = 0; i < argc; i++) printf(", argv[%d]=\"%s\"", i, argv[i]); }
+
+  // XXX dodać prawdziwe getopt()
+  if (argc > 1 && strcmp(argv[1], "--debug") == 0)
+    debug = 1;
+
   add_pixmap_directory (PACKAGE_DATA_DIR "/" PACKAGE "/pixmaps");
   add_pixmap_directory ("../pixmaps");
 
@@ -43,6 +50,21 @@ main (int argc, char *argv[])
    * the project. Delete any components that you don't want shown initially.
    */
   window1 = create_window1 ();
+
+  if (debug) {
+    GtkWidget *tmp;
+
+    tmp = lookup_widget(window1, "toolbutton_test");
+    gtk_widget_show(tmp);
+
+    tmp = lookup_widget(window1, "separatortoolitem_format");
+    gtk_widget_show(tmp);
+
+    tmp = lookup_widget(window1, "combobox_format");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(tmp), FORMAT_ALL);
+    gtk_widget_show(tmp);
+  }
+
   gtk_widget_show (window1);
 
   treeview1_init (window1);

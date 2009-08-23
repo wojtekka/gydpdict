@@ -13,10 +13,11 @@
 #include "dictionary.h"
 #include "interface.h"
 
-ydpdict_t dict;
+ydpdict_t *dict;
 G_LOCK_DEFINE (dict);
-int dict_loaded;
-int dict_num;
+
+dict_type_t dict_type;
+dict_format_t dict_format;
 
 const gchar *config_path = "/usr/local/share/ydpdict";
 
@@ -44,14 +45,16 @@ treeview_fill (GtkWidget *view, ydpdict_t *dict)
 	GtkListStore *store;
 	GtkTreeIter iter;
 	GtkCellRenderer *renderer;
-	int i;
+	int i, count;
 	struct timeval tv1, tv2;
 
 	store = gtk_list_store_new (1, G_TYPE_STRING);
 
-	for (i = 0; i < dict->word_count; i++) {
+	count = ydpdict_get_count(dict);
+
+	for (i = 0; i < count; i++) {
 		gtk_list_store_append (store, &iter);
-		gtk_list_store_set (store, &iter, 0, dict->words[i], -1);
+		gtk_list_store_set (store, &iter, 0, ydpdict_get_word(dict, i), -1);
 	}
 
 	gtk_tree_view_set_model(GTK_TREE_VIEW(view), GTK_TREE_MODEL(store));
@@ -73,33 +76,33 @@ load_dictionary (gpointer data)
 
 	treeview1 = g_object_get_data (G_OBJECT (window2), "treeview1");
 	window1 = g_object_get_data (G_OBJECT (window2), "window1");
-	num = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (window2), "dict_num"));
+	num = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (window2), "dict_type"));
 
 	g_print("treeview1 = %p\n", treeview1);
 
-	if (dict_loaded) {
+	if (dict) {
 		gdk_threads_enter ();
 		gtk_tree_view_set_model (GTK_TREE_VIEW (treeview1), NULL);
 		gdk_threads_leave ();
-		ydpdict_close (&dict);
-		dict_loaded = 0;
-		dict_num = 0;
+		ydpdict_close (dict);
+		dict = NULL;
+		dict_type = 0;
 	}
-
-	memset (&dict, 0, sizeof(dict));
 
 	dat = g_strdup_printf ("%s/dict%d.dat", config_path, num);
 	idx = g_strdup_printf ("%s/dict%d.idx", config_path, num);
 
-	g_print ("opening\n");
-	if (ydpdict_open (&dict, dat, idx, YDPDICT_ENCODING_UTF8) == 0) {
+	g_print ("opening %s\n", dat);
+
+	dict = ydpdict_open (dat, idx, YDPDICT_ENCODING_UTF8);
+
+	if (dict) {
 		g_print ("opened\n");
-		dict_loaded = 1;
-		dict_num = num;
+		dict_type = num;
 
 		g_print ("filling\n");
 		gdk_threads_enter ();
-		treeview_fill (treeview1, &dict);
+		treeview_fill (treeview1, dict);
 		gdk_threads_leave ();
 		g_print ("filled\n");
 	} else {
@@ -131,7 +134,7 @@ gboolean tick_progress (gpointer data)
 
 
 void
-switch_dictionary (GtkWidget *any, int num)
+switch_dictionary (GtkWidget *any, dict_type_t type)
 {
 	GtkWidget *window1, *window2;
 	gchar *dat, *idx;
@@ -139,7 +142,7 @@ switch_dictionary (GtkWidget *any, int num)
 
 	G_LOCK (dict);
 
-	if (dict_loaded && dict_num == num) {
+	if (dict != NULL && dict_type == type) {
 		G_UNLOCK (dict);
 		return;
 	}
@@ -155,7 +158,7 @@ switch_dictionary (GtkWidget *any, int num)
 
 	sid = g_timeout_add (100, tick_progress, lookup_widget (window2, "progressbar1"));
 	g_object_set_data (G_OBJECT (window2), "source_id", GINT_TO_POINTER (sid));
-	g_object_set_data (G_OBJECT (window2), "dict_num", GINT_TO_POINTER (num));
+	g_object_set_data (G_OBJECT (window2), "dict_type", GINT_TO_POINTER (type));
 	g_object_set_data (G_OBJECT (window2), "window1", window1);
 	g_object_set_data (G_OBJECT (window2), "treeview1", lookup_widget (any, "treeview1"));
 	

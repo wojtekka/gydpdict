@@ -14,13 +14,18 @@
 #include "dictionary.h"
 
 
+static const gchar xhtml_template[] = "<?xml version=\"1.0\"?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\n<style>\nbody { background: white; margin-top: 0px; }\n</style>\n<body>\n%s\n</body>\n</html>\n";
+
+
 GtkWidget*
 create_gtkhtml1 (gchar *widget_name, gchar *string1, gchar *string2,
                 gint int1, gint int2)
 {
 	GtkWidget *view;
 	HtmlDocument *doc;
-	char *text = "<?xml version=\"1.0\"?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><style>\nbody { background: white; margin-top: 0px; }\n</style></head><body><h1>ydpdict</h1><h3>wersja GTK+</h3><hr /><p>Witamy w wersji testowej.</p></body></html>";
+	gchar *text;
+	
+	text = g_strdup_printf(xhtml_template, _("<h1>ydpdict</h1><h3>wersja GTK+</h3><hr /><p>Witamy w wersji testowej.</p>"));
 
 	doc = html_document_new ();
 
@@ -50,38 +55,27 @@ entry_update                           (GtkWidget       *html,
 {
 	GtkWidget *window1;
 	HtmlDocument *doc;
-	uint32_t i = (uint32_t) -1;
 	gchar *def;
-	int staticdef;
+	int i;
 
 	if (!html)
 		return;
 
-	printf ("entry_update(%p, %d, %s%s%s)\n", html, index, (word) ? "\"" : "", (word) ? word : "NULL", (word) ? "\"" : "");
+	printf ("entry_update(%p, %d, %s%s%s)\n", html, index, (word != NULL) ? "\"" : "", (word != NULL) ? word : "NULL", (word != NULL) ? "\"" : "");
 	
 	G_LOCK (dict);
 
-	if (!dict_loaded) {
+	if (dict == NULL) {
 		G_UNLOCK (dict);
 		return;
 	}
 
 	window1 = lookup_widget (GTK_WIDGET (html), "window1");
 
-	if (word) {
-		i = ydpdict_find(&dict, word);
+	if (word != NULL) {
+		i = ydpdict_find_word(dict, word);
 		
-		if (i == (uint32_t) -1) {
-			for (i = 0; i < dict.word_count; i++) {
-				if (!strncasecmp (dict.words[i], word, strlen (word)))
-					break;
-			}
-			
-			if (i == dict.word_count)
-				i = (uint32_t) -1;
-		}
-
-		if (i != (uint32_t) -1) {
+		if (i != -1) {
 			GtkTreePath *path;
 			
 			if ((path = gtk_tree_path_new_from_indices (i, -1))) {
@@ -100,15 +94,65 @@ entry_update                           (GtkWidget       *html,
 	if (index != -1)
 		i = index;
 
-	ydpdict_xhtml_set_header (&dict, 1);
-	ydpdict_xhtml_set_style (&dict, "\nbody { background: white; margin-top: 0px; }\n");
+	ydpdict_set_xhtml_header (dict, 1);
+	ydpdict_set_xhtml_style (dict, "\nbody { background: white; margin-top: 0px; }\n");
 
-	if (i == (uint32_t) -1) {
-		def = "<?xml version=\"1.0\"?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><style>\nbody { background: white; margin-top: 0px; }\n</style><body>Nie znaleziono.</body></html>";
-		staticdef = 1;
+	if (i != -1) {
+		switch (dict_format) {
+			case FORMAT_HTML:
+				def = ydpdict_read_xhtml (dict, i);
+				break;
+
+			case FORMAT_RAW_RTF:
+			{
+				char *tmp;
+
+				tmp = ydpdict_read_rtf (dict, i);
+				def = g_markup_printf_escaped(xhtml_template, tmp);
+				free(tmp);
+				break;
+			}
+
+			case FORMAT_RAW_HTML:
+			{
+				char *tmp;
+
+				tmp = ydpdict_read_xhtml (dict, i);
+				def = g_markup_printf_escaped(xhtml_template, tmp);
+				free(tmp);
+				break;
+			}
+
+			case FORMAT_ALL:
+			{
+				char *tmp, *tmp_end, *tmp_rtf, *tmp_html;
+
+				tmp = ydpdict_read_rtf (dict, i);
+				tmp_rtf = g_markup_escape_text(tmp, -1);
+				free(tmp);
+
+				tmp = ydpdict_read_xhtml (dict, i);
+				tmp_html = g_markup_escape_text(tmp, -1);
+
+				tmp_end = strstr(tmp, "</body>");
+				if (tmp_end != NULL)
+					*tmp_end = 0;
+
+				def = g_strdup_printf("%s<hr /><p>%s</p><hr /><p>%s</p></body></html>", tmp, tmp_rtf, tmp_html);
+
+				free(tmp);
+				free(tmp_html);
+				free(tmp_rtf);
+
+				break;
+			}
+
+			default:
+				def = NULL;
+				break;
+		}
 	} else {
-		def = ydpdict_read_xhtml (&dict, i);
-		staticdef = 0;
+		def = g_strdup_printf(xhtml_template, _("Not found"));
 	}
 
 	G_UNLOCK(dict);
@@ -121,8 +165,7 @@ entry_update                           (GtkWidget       *html,
 
 	html_view_set_document (HTML_VIEW (html), doc);
 
-	if (!staticdef)
-		free (def);
+	free (def);
 }
 
 
@@ -241,5 +284,24 @@ on_toolbutton_pl_de_toggled            (GtkToggleToolButton *toggletoolbutton,
 
 	if (gtk_toggle_tool_button_get_active (toggletoolbutton))
 		switch_dictionary (GTK_WIDGET (toggletoolbutton), YDPDICT_PL_DE);
+}
+
+
+void
+on_toolbutton_test_toggled             (GtkToggleToolButton *toggletoolbutton,
+                                        gpointer         user_data)
+{
+	g_print ("on_toolbutton_test_toggled()\n");
+
+	if (gtk_toggle_tool_button_get_active (toggletoolbutton))
+		switch_dictionary (GTK_WIDGET (toggletoolbutton), YDPDICT_TEST);
+}
+
+
+void
+on_combobox_format_changed             (GtkComboBox     *combobox,
+                                        gpointer         user_data)
+{
+	dict_format = gtk_combo_box_get_active(combobox);
 }
 

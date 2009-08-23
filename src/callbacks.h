@@ -63,3 +63,11 @@ on_toolbutton_de_pl_toggled            (GtkToggleToolButton *toggletoolbutton,
 void
 on_toolbutton_pl_de_toggled            (GtkToggleToolButton *toggletoolbutton,
                                         gpointer         user_data);
+
+void
+on_combobox_format_changed             (GtkComboBox     *combobox,
+                                        gpointer         user_data);
+
+void
+on_toolbutton_test_toggled             (GtkToggleToolButton *toggletoolbutton,
+                                        gpointer         user_data);

@@ -39,8 +39,14 @@ create_window1 (void)
   GtkWidget *toolbutton_pl_en;
   GtkWidget *toolbutton_de_pl;
   GtkWidget *toolbutton_pl_de;
+  GtkWidget *toolbutton_test;
   GtkWidget *separatortoolitem1;
   GtkWidget *toolbutton_copy;
+  GtkWidget *toolitem2;
+  GtkWidget *alignment1;
+  GtkWidget *separatortoolitem_format;
+  GtkWidget *toolitem3;
+  GtkWidget *combobox_format;
   GtkWidget *hpaned1;
   GtkWidget *vbox2;
   GtkWidget *entry1;
@@ -111,6 +117,16 @@ create_window1 (void)
   gtk_radio_tool_button_set_group (GTK_RADIO_TOOL_BUTTON (toolbutton_pl_de), toolbutton_en_pl_group);
   toolbutton_en_pl_group = gtk_radio_tool_button_get_group (GTK_RADIO_TOOL_BUTTON (toolbutton_pl_de));
 
+  toolbutton_test = (GtkWidget*) gtk_radio_tool_button_new (NULL);
+  gtk_tool_button_set_label (GTK_TOOL_BUTTON (toolbutton_test), "");
+  tmp_image = gtk_image_new_from_stock ("gtk-execute", tmp_toolbar_icon_size);
+  gtk_widget_show (tmp_image);
+  gtk_tool_button_set_icon_widget (GTK_TOOL_BUTTON (toolbutton_test), tmp_image);
+  gtk_container_add (GTK_CONTAINER (toolbar1), toolbutton_test);
+  gtk_tool_item_set_tooltip (GTK_TOOL_ITEM (toolbutton_test), tooltips, _("Switch to test dictionary"), NULL);
+  gtk_radio_tool_button_set_group (GTK_RADIO_TOOL_BUTTON (toolbutton_test), toolbutton_en_pl_group);
+  toolbutton_en_pl_group = gtk_radio_tool_button_get_group (GTK_RADIO_TOOL_BUTTON (toolbutton_test));
+
   separatortoolitem1 = (GtkWidget*) gtk_separator_tool_item_new ();
   gtk_widget_show (separatortoolitem1);
   gtk_container_add (GTK_CONTAINER (toolbar1), separatortoolitem1);
@@ -119,6 +135,29 @@ create_window1 (void)
   gtk_widget_show (toolbutton_copy);
   gtk_container_add (GTK_CONTAINER (toolbar1), toolbutton_copy);
   gtk_tool_item_set_tooltip (GTK_TOOL_ITEM (toolbutton_copy), tooltips, _("Copy word definition"), NULL);
+
+  toolitem2 = (GtkWidget*) gtk_tool_item_new ();
+  gtk_widget_show (toolitem2);
+  gtk_container_add (GTK_CONTAINER (toolbar1), toolitem2);
+
+  alignment1 = gtk_alignment_new (0.5, 0.5, 1, 1);
+  gtk_widget_show (alignment1);
+  gtk_container_add (GTK_CONTAINER (toolitem2), alignment1);
+
+  separatortoolitem_format = (GtkWidget*) gtk_separator_tool_item_new ();
+  gtk_container_add (GTK_CONTAINER (alignment1), separatortoolitem_format);
+
+  toolitem3 = (GtkWidget*) gtk_tool_item_new ();
+  gtk_widget_show (toolitem3);
+  gtk_container_add (GTK_CONTAINER (toolbar1), toolitem3);
+
+  combobox_format = gtk_combo_box_new_text ();
+  gtk_container_add (GTK_CONTAINER (toolitem3), combobox_format);
+  gtk_combo_box_append_text (GTK_COMBO_BOX (combobox_format), _("HTML"));
+  gtk_combo_box_append_text (GTK_COMBO_BOX (combobox_format), _("Raw RTF"));
+  gtk_combo_box_append_text (GTK_COMBO_BOX (combobox_format), _("Raw HTML"));
+  gtk_combo_box_append_text (GTK_COMBO_BOX (combobox_format), _("All above"));
+  gtk_combo_box_set_focus_on_click (GTK_COMBO_BOX (combobox_format), FALSE);
 
   hpaned1 = gtk_hpaned_new ();
   gtk_widget_show (hpaned1);
@@ -178,8 +217,14 @@ create_window1 (void)
   g_signal_connect ((gpointer) toolbutton_pl_de, "toggled",
                     G_CALLBACK (on_toolbutton_pl_de_toggled),
                     NULL);
+  g_signal_connect ((gpointer) toolbutton_test, "toggled",
+                    G_CALLBACK (on_toolbutton_test_toggled),
+                    NULL);
   g_signal_connect ((gpointer) toolbutton_copy, "clicked",
                     G_CALLBACK (on_toolbutton_copy_clicked),
+                    NULL);
+  g_signal_connect ((gpointer) combobox_format, "changed",
+                    G_CALLBACK (on_combobox_format_changed),
                     NULL);
   g_signal_connect ((gpointer) entry1, "changed",
                     G_CALLBACK (on_entry1_changed),
@@ -202,8 +247,14 @@ create_window1 (void)
   GLADE_HOOKUP_OBJECT (window1, toolbutton_pl_en, "toolbutton_pl_en");
   GLADE_HOOKUP_OBJECT (window1, toolbutton_de_pl, "toolbutton_de_pl");
   GLADE_HOOKUP_OBJECT (window1, toolbutton_pl_de, "toolbutton_pl_de");
+  GLADE_HOOKUP_OBJECT (window1, toolbutton_test, "toolbutton_test");
   GLADE_HOOKUP_OBJECT (window1, separatortoolitem1, "separatortoolitem1");
   GLADE_HOOKUP_OBJECT (window1, toolbutton_copy, "toolbutton_copy");
+  GLADE_HOOKUP_OBJECT (window1, toolitem2, "toolitem2");
+  GLADE_HOOKUP_OBJECT (window1, alignment1, "alignment1");
+  GLADE_HOOKUP_OBJECT (window1, separatortoolitem_format, "separatortoolitem_format");
+  GLADE_HOOKUP_OBJECT (window1, toolitem3, "toolitem3");
+  GLADE_HOOKUP_OBJECT (window1, combobox_format, "combobox_format");
   GLADE_HOOKUP_OBJECT (window1, hpaned1, "hpaned1");
   GLADE_HOOKUP_OBJECT (window1, vbox2, "vbox2");
   GLADE_HOOKUP_OBJECT (window1, entry1, "entry1");
@@ -226,13 +277,13 @@ create_window2 (void)
   GtkWidget *label1;
   GtkWidget *progressbar1;
 
-  window2 = gtk_window_new (GTK_WINDOW_POPUP);
+  window2 = gtk_window_new (GTK_WINDOW_TOPLEVEL);
   gtk_widget_set_size_request (window2, 320, -1);
   gtk_container_set_border_width (GTK_CONTAINER (window2), 10);
   gtk_window_set_title (GTK_WINDOW (window2), _("window2"));
   gtk_window_set_position (GTK_WINDOW (window2), GTK_WIN_POS_CENTER);
   gtk_window_set_modal (GTK_WINDOW (window2), TRUE);
-  gtk_window_set_type_hint (GTK_WINDOW (window2), GDK_WINDOW_TYPE_HINT_TOOLBAR);
+  gtk_window_set_type_hint (GTK_WINDOW (window2), GDK_WINDOW_TYPE_HINT_SPLASHSCREEN);
 
   vbox3 = gtk_vbox_new (FALSE, 4);
   gtk_widget_show (vbox3);
