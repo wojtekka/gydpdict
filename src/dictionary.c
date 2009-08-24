@@ -4,14 +4,15 @@
 
 #include <gtk/gtk.h>
 #include <ydpdict/ydpdict.h>
+#include <libgtkhtml/gtkhtml.h>
 
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
 
-#include "support.h"
 #include "dictionary.h"
-#include "interface.h"
+#include "callbacks.h"
+#include "main.h"
 
 ydpdict_t *dict;
 G_LOCK_DEFINE (dict);
@@ -20,33 +21,37 @@ dict_type_t dict_type;
 dict_format_t dict_format;
 
 const gchar *config_path = "/usr/local/share/ydpdict";
+static guint progress_source_id;
 
 
-void
-treeview1_init (GtkWidget *window1)
+void widgets_init (void)
 {
-	GtkCellRenderer *renderer;
 	GtkWidget *treeview1;
+	GtkWidget *viewport1;
+	
+	treeview1 = lookup_widget("treeview1");
 
-	treeview1 = lookup_widget(window1, "treeview1");
+	if (treeview1 != NULL) {
+		GtkCellRenderer *renderer;
 
-	if (!treeview1)
-		return;
+		renderer = gtk_cell_renderer_text_new();
 
-	renderer = gtk_cell_renderer_text_new();
+		gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(treeview1), -1, "foo", renderer, "text", 0, NULL);
+	}
 
-	gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(treeview1), -1, "foo", renderer, "text", 0, NULL);
+	html_view = create_gtkhtml1();
+	viewport1 = lookup_widget("viewport1");
+	gtk_container_add(GTK_CONTAINER(viewport1), html_view);
+	gtk_widget_show(html_view);
 }
 
 
-void
-treeview_fill (GtkWidget *view, ydpdict_t *dict)
+void treeview_fill (GtkWidget *view, ydpdict_t *dict)
 {
 	GtkListStore *store;
 	GtkTreeIter iter;
 	GtkCellRenderer *renderer;
 	int i, count;
-	struct timeval tv1, tv2;
 
 	store = gtk_list_store_new (1, G_TYPE_STRING);
 
@@ -66,7 +71,7 @@ treeview_fill (GtkWidget *view, ydpdict_t *dict)
 gpointer
 load_dictionary (gpointer data)
 {
-	GtkWidget *window1, *window2 = data, *treeview1;
+	GtkWidget *treeview1;
 	gchar *dat, *idx;
 	gint num;
 	struct timeval tv1, tv2;
@@ -74,9 +79,8 @@ load_dictionary (gpointer data)
 
 	G_LOCK (dict);
 
-	treeview1 = g_object_get_data (G_OBJECT (window2), "treeview1");
-	window1 = g_object_get_data (G_OBJECT (window2), "window1");
-	num = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (window2), "dict_type"));
+	treeview1 = lookup_widget ("treeview1");
+	num = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (progress_window), "dict_type"));
 
 	g_print("treeview1 = %p\n", treeview1);
 
@@ -96,7 +100,7 @@ load_dictionary (gpointer data)
 
 	dict = ydpdict_open (dat, idx, YDPDICT_ENCODING_UTF8);
 
-	if (dict) {
+	if (dict != NULL) {
 		g_print ("opened\n");
 		dict_type = num;
 
@@ -114,16 +118,15 @@ load_dictionary (gpointer data)
 
 	G_UNLOCK (dict);
 
-	gtk_widget_set_sensitive (window1, TRUE);
+	gtk_widget_set_sensitive (main_window, TRUE);
 	g_print("destroying\n");
-	g_source_remove (GPOINTER_TO_INT (g_object_get_data (G_OBJECT (data), "source_id")));
-	gtk_widget_hide (GTK_WIDGET (data));
-	gtk_widget_destroy (GTK_WIDGET (data));
+	g_source_remove (GPOINTER_TO_INT (g_object_get_data (G_OBJECT (progress_window), "source_id")));
+	gtk_widget_hide (GTK_WIDGET (progress_window));
 	g_print("destroyed\n");
 }
 
 
-gboolean tick_progress (gpointer data)
+gboolean progress_tick (gpointer data)
 {
 	gdk_threads_enter ();
 	gtk_progress_bar_pulse (GTK_PROGRESS_BAR (data));
@@ -133,10 +136,8 @@ gboolean tick_progress (gpointer data)
 }
 
 
-void
-switch_dictionary (GtkWidget *any, dict_type_t type)
+void switch_dictionary (dict_type_t type)
 {
-	GtkWidget *window1, *window2;
 	gchar *dat, *idx;
 	guint sid;
 
@@ -149,20 +150,15 @@ switch_dictionary (GtkWidget *any, dict_type_t type)
 
 	G_UNLOCK (dict);
 
-	window1 = lookup_widget(any, "window1");
-	gtk_widget_set_sensitive(window1, FALSE);
+	gtk_widget_set_sensitive(main_window, FALSE);
 
-	window2 = create_window2 ();
-	g_signal_connect (window2, "delete_event", G_CALLBACK (gtk_true), NULL);
-	gtk_widget_show (window2);
+	gtk_widget_show (progress_window);
 
-	sid = g_timeout_add (100, tick_progress, lookup_widget (window2, "progressbar1"));
-	g_object_set_data (G_OBJECT (window2), "source_id", GINT_TO_POINTER (sid));
-	g_object_set_data (G_OBJECT (window2), "dict_type", GINT_TO_POINTER (type));
-	g_object_set_data (G_OBJECT (window2), "window1", window1);
-	g_object_set_data (G_OBJECT (window2), "treeview1", lookup_widget (any, "treeview1"));
+	sid = g_timeout_add (100, progress_tick, lookup_widget ("progressbar1"));
+	g_object_set_data (G_OBJECT (progress_window), "source_id", GINT_TO_POINTER (sid));
+	g_object_set_data (G_OBJECT (progress_window), "dict_type", GINT_TO_POINTER (type));
 	
-	g_thread_create (load_dictionary, window2, FALSE, NULL);
+	g_thread_create (load_dictionary, NULL, FALSE, NULL);
 }
 
 

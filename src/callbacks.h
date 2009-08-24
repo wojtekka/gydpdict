@@ -3,11 +3,10 @@
 
 
 GtkWidget*
-create_gtkhtml1 (gchar *widget_name, gchar *string1, gchar *string2,
-                gint int1, gint int2);
+create_gtkhtml1 (void);
 
 void
-on_window1_destroy                     (GtkObject       *object,
+on_main_window_destroy                 (GtkObject       *object,
                                         gpointer         user_data);
 
 void

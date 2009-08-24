@@ -9,17 +9,15 @@
 #include <gdk/gdkkeysyms.h>
 
 #include "callbacks.h"
-#include "interface.h"
-#include "support.h"
 #include "dictionary.h"
+#include "main.h"
 
 
-static const gchar xhtml_template[] = "<?xml version=\"1.0\"?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\n<style>\nbody { background: white; margin-top: 0px; }\n</style>\n<body>\n%s\n</body>\n</html>\n";
+const gchar xhtml_template[] = "<?xml version=\"1.0\"?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\n<style>\nbody { background: white; margin-top: 0px; }\n</style>\n<body>\n%s\n</body>\n</html>\n";
 
 
 GtkWidget*
-create_gtkhtml1 (gchar *widget_name, gchar *string1, gchar *string2,
-                gint int1, gint int2)
+create_gtkhtml1 (void)
 {
 	GtkWidget *view;
 	HtmlDocument *doc;
@@ -41,7 +39,7 @@ create_gtkhtml1 (gchar *widget_name, gchar *string1, gchar *string2,
 
 
 void
-on_window1_destroy                     (GtkObject       *object,
+on_main_window_destroy                 (GtkObject       *object,
                                         gpointer         user_data)
 {
 	gtk_main_quit ();
@@ -49,19 +47,17 @@ on_window1_destroy                     (GtkObject       *object,
 
 
 void
-entry_update                           (GtkWidget       *html,
-                                        gint             index,
+entry_update                           (gint             index,
 					const gchar     *word)
 {
-	GtkWidget *window1;
 	HtmlDocument *doc;
 	gchar *def;
 	int i;
 
-	if (!html)
+	if (html_view == NULL)
 		return;
 
-	printf ("entry_update(%p, %d, %s%s%s)\n", html, index, (word != NULL) ? "\"" : "", (word != NULL) ? word : "NULL", (word != NULL) ? "\"" : "");
+	printf ("entry_update(%d, %s%s%s)\n", index, (word != NULL) ? "\"" : "", (word != NULL) ? word : "NULL", (word != NULL) ? "\"" : "");
 	
 	G_LOCK (dict);
 
@@ -69,8 +65,6 @@ entry_update                           (GtkWidget       *html,
 		G_UNLOCK (dict);
 		return;
 	}
-
-	window1 = lookup_widget (GTK_WIDGET (html), "window1");
 
 	if (word != NULL) {
 		i = ydpdict_find_word(dict, word);
@@ -81,7 +75,7 @@ entry_update                           (GtkWidget       *html,
 			if ((path = gtk_tree_path_new_from_indices (i, -1))) {
 				GtkTreeView *treeview;
 
-				if ((treeview = GTK_TREE_VIEW (lookup_widget (GTK_WIDGET (html), "treeview1")))) {
+				if ((treeview = GTK_TREE_VIEW (lookup_widget ("treeview1")))) {
 					g_object_set_data (G_OBJECT (treeview), "dont-update", GINT_TO_POINTER (1));
 					gtk_tree_view_set_cursor (treeview, path, NULL, 0);
 				}
@@ -152,7 +146,7 @@ entry_update                           (GtkWidget       *html,
 				break;
 		}
 	} else {
-		def = g_strdup_printf(xhtml_template, _("Not found"));
+		def = g_strdup_printf(xhtml_template, N_(""));
 	}
 
 	G_UNLOCK(dict);
@@ -163,7 +157,7 @@ entry_update                           (GtkWidget       *html,
 	html_document_write_stream (doc, def, strlen (def));
 	html_document_close_stream (doc);
 
-	html_view_set_document (HTML_VIEW (html), doc);
+	html_view_set_document (HTML_VIEW (html_view), doc);
 
 	free (def);
 }
@@ -175,7 +169,7 @@ on_entry1_changed                      (GtkEditable     *editable,
 {
 	g_print("on_entry1_changed\n");
 
-	entry_update (lookup_widget (GTK_WIDGET (editable), "gtkhtml1"), -1, gtk_entry_get_text (GTK_ENTRY (editable)));
+	entry_update (-1, gtk_entry_get_text (GTK_ENTRY (editable)));
 }
 
 
@@ -200,7 +194,7 @@ on_treeview1_cursor_changed            (GtkTreeView     *treeview,
 		return;
 
 	index = gtk_tree_path_to_string (path);
-	entry_update (lookup_widget (GTK_WIDGET (treeview), "gtkhtml1"), atoi (index), NULL);
+	entry_update (atoi (index), NULL);
 	g_free (index);
 
 	gtk_tree_path_free (path);
@@ -215,7 +209,7 @@ on_treeview1_key_press_event           (GtkWidget       *widget,
 	g_print( "on_treeview1_key_press_event\n");
 
 	if (event && !(event->keyval == GDK_Up || event->keyval == GDK_Down || event->keyval == GDK_Page_Up || event->keyval == GDK_Page_Down || event->keyval == GDK_Home || event->keyval == GDK_End)) {
-		gtk_widget_event (lookup_widget (widget, "entry1"), (GdkEvent*) event);
+		gtk_widget_event (lookup_widget ("entry1"), (GdkEvent*) event);
 		return TRUE;
 	}
 
@@ -250,7 +244,7 @@ on_toolbutton_en_pl_toggled            (GtkToggleToolButton *toggletoolbutton,
 	g_print ("on_toolbutton_de_pl_toggled()\n");
 
 	if (gtk_toggle_tool_button_get_active (toggletoolbutton))
-		switch_dictionary (GTK_WIDGET(toggletoolbutton), YDPDICT_EN_PL);
+		switch_dictionary (YDPDICT_EN_PL);
 }
 
 
@@ -261,7 +255,7 @@ on_toolbutton_pl_en_toggled            (GtkToggleToolButton *toggletoolbutton,
 	g_print ("on_toolbutton_de_pl_toggled()\n");
 
 	if (gtk_toggle_tool_button_get_active (toggletoolbutton))
-		switch_dictionary (GTK_WIDGET (toggletoolbutton), YDPDICT_PL_EN);
+		switch_dictionary (YDPDICT_PL_EN);
 }
 
 
@@ -272,7 +266,7 @@ on_toolbutton_de_pl_toggled            (GtkToggleToolButton *toggletoolbutton,
 	g_print ("on_toolbutton_de_pl_toggled()\n");
 
 	if (gtk_toggle_tool_button_get_active (toggletoolbutton))
-		switch_dictionary (GTK_WIDGET (toggletoolbutton), YDPDICT_DE_PL);
+		switch_dictionary (YDPDICT_DE_PL);
 }
 
 
@@ -283,7 +277,7 @@ on_toolbutton_pl_de_toggled            (GtkToggleToolButton *toggletoolbutton,
 	g_print ("on_toolbutton_pl_de_toggled()\n");
 
 	if (gtk_toggle_tool_button_get_active (toggletoolbutton))
-		switch_dictionary (GTK_WIDGET (toggletoolbutton), YDPDICT_PL_DE);
+		switch_dictionary (YDPDICT_PL_DE);
 }
 
 
@@ -294,7 +288,7 @@ on_toolbutton_test_toggled             (GtkToggleToolButton *toggletoolbutton,
 	g_print ("on_toolbutton_test_toggled()\n");
 
 	if (gtk_toggle_tool_button_get_active (toggletoolbutton))
-		switch_dictionary (GTK_WIDGET (toggletoolbutton), YDPDICT_TEST);
+		switch_dictionary (YDPDICT_TEST);
 }
 
 

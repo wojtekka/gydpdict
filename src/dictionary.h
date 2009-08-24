@@ -26,9 +26,7 @@ G_LOCK_EXTERN (dict);
 dict_type_t dict_type;
 dict_format_t dict_format;
 
-void
-treeview1_init (GtkWidget *window1);
+void widgets_init (void);
 
-void
-switch_dictionary(GtkWidget *any, dict_type_t type);
+void switch_dictionary (dict_type_t type);
 

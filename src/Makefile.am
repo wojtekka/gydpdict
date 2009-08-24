@@ -9,10 +9,9 @@ bin_PROGRAMS = gydpdict
 
 gydpdict_SOURCES = \
 	main.c \
-	support.c support.h \
-	interface.c interface.h \
 	callbacks.c callbacks.h \
 	dictionary.c dictionary.h
 
 gydpdict_LDADD = @PACKAGE_LIBS@ $(INTLLIBS)
 
+gydpdict_LDFLAGS = -rdynamic
