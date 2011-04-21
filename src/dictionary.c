@@ -4,7 +4,7 @@
 
 #include <gtk/gtk.h>
 #include <ydpdict/ydpdict.h>
-#include <libgtkhtml/gtkhtml.h>
+#include <gtkhtml/gtkhtml.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -21,8 +21,6 @@ dict_type_t dict_type;
 dict_format_t dict_format;
 
 const gchar *config_path = "/usr/local/share/ydpdict";
-static guint progress_source_id;
-
 
 void widgets_init (void)
 {
@@ -50,7 +48,6 @@ void treeview_fill (GtkWidget *view, ydpdict_t *dict)
 {
 	GtkListStore *store;
 	GtkTreeIter iter;
-	GtkCellRenderer *renderer;
 	int i, count;
 
 	store = gtk_list_store_new (1, G_TYPE_STRING);
@@ -74,8 +71,6 @@ load_dictionary (gpointer data)
 	GtkWidget *treeview1;
 	gchar *dat, *idx;
 	gint num;
-	struct timeval tv1, tv2;
-	gint td;
 
 	G_LOCK (dict);
 
@@ -123,6 +118,8 @@ load_dictionary (gpointer data)
 	g_source_remove (GPOINTER_TO_INT (g_object_get_data (G_OBJECT (progress_window), "source_id")));
 	gtk_widget_hide (GTK_WIDGET (progress_window));
 	g_print("destroyed\n");
+
+	return NULL;
 }
 
 
@@ -138,7 +135,6 @@ gboolean progress_tick (gpointer data)
 
 void switch_dictionary (dict_type_t type)
 {
-	gchar *dat, *idx;
 	guint sid;
 
 	G_LOCK (dict);

@@ -2,6 +2,7 @@
 #  include <config.h>
 #endif
 
+#include <string.h>
 #include <gtk/gtk.h>
 #include <ydpdict/ydpdict.h>
 
@@ -22,7 +23,6 @@ GtkWidget* lookup_widget (const char *name)
 
 int main (int argc, char *argv[])
 {
-	ydpdict_t *dict;
 	gboolean debug = FALSE;
 	GError* error = NULL;
 

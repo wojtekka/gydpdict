@@ -2,8 +2,9 @@
 #  include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <gtk/gtk.h>
-#include <libgtkhtml/gtkhtml.h>
+#include <gtkhtml/gtkhtml.h>
 #include <ydpdict/ydpdict.h>
 #include <string.h>
 #include <gdk/gdkkeysyms.h>
@@ -19,22 +20,16 @@ const gchar xhtml_template[] = "<?xml version=\"1.0\"?>\n<!DOCTYPE html PUBLIC \
 GtkWidget*
 create_gtkhtml1 (void)
 {
-	GtkWidget *view;
-	HtmlDocument *doc;
+	GtkWidget *gtk_html;
 	gchar *text;
 	
 	text = g_strdup_printf(xhtml_template, _("<h1>ydpdict</h1><h3>wersja GTK+</h3><hr /><p>Witamy w wersji testowej.</p>"));
 
-	doc = html_document_new ();
+	gtk_html = gtk_html_new_from_string (text, -1);
 
-	html_document_open_stream (doc, "text/html");
-	html_document_write_stream (doc, text, strlen (text));
-	html_document_close_stream (doc);
+	g_free(text);
 
-	view = html_view_new ();
-	html_view_set_document (HTML_VIEW (view), doc);
-
-	return view;
+	return gtk_html;
 }
 
 
@@ -50,9 +45,8 @@ void
 entry_update                           (gint             index,
 					const gchar     *word)
 {
-	HtmlDocument *doc;
 	gchar *def;
-	int i;
+	int i = -1;
 
 	if (html_view == NULL)
 		return;
@@ -151,13 +145,7 @@ entry_update                           (gint             index,
 
 	G_UNLOCK(dict);
 
-	doc = html_document_new ();
-
-	html_document_open_stream (doc, "text/html");
-	html_document_write_stream (doc, def, strlen (def));
-	html_document_close_stream (doc);
-
-	html_view_set_document (HTML_VIEW (html_view), doc);
+	gtk_html_load_from_string (GTK_HTML (html_view), def, -1);
 
 	free (def);
 }
